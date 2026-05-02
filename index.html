@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Age Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class'}</script>
+<style>
+/* ═══════════════ TOKENS ═══════════════ */
+:root{
+  --paper:#f5f0e8; --cream:#faf7f2;
+  --gold:#c9972c;  --gold-lt:#e8be5a; --gold-glow:rgba(201,151,44,.25);
+  --teal:#2a7f6f;  --teal-lt:#3ba898;
+  --rose:#c0454a;  --violet:#6b4fa0;
+  --card:#ffffff;  --border:#e2d9cc;
+  --muted:#8a8070; --text:#2c2416;   --sub:#5a5040;
+}
+html.dark{
+  --paper:#1c2340;   --cream:#242b52;
+  --gold:#fbbf24;    --gold-lt:#fde68a; --gold-glow:rgba(251,191,36,.22);
+  --teal:#34d399;    --teal-lt:#6ee7b7;
+  --rose:#fb7185;    --violet:#c084fc;
+  --card:#2a3158;    --border:#3d4a7a;
+  --muted:#94a3c4;   --text:#eef2ff;   --sub:#c7d0ee;
+}
+
+/* ═══════════════ BASE ═══════════════ */
+*{box-sizing:border-box}
+body{
+  background:var(--paper);color:var(--text);
+  font-family:'DM Sans',sans-serif;min-height:100vh;
+  transition:background .5s,color .3s;
+  overflow-x:hidden;
+}
+html.dark body{
+  background:
+    radial-gradient(ellipse at 15% 10%, rgba(99,102,241,.18) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 20%, rgba(52,211,153,.12) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 90%, rgba(192,132,252,.14) 0%, transparent 50%),
+    linear-gradient(160deg,#151d38 0%,#1c2340 50%,#1a1f3a 100%);
+}
+
+/* ═══════════════ ANIMATED BACKGROUND ═══════════════ */
+#bg-canvas{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.6}
+.wrap{position:relative;z-index:1}
+
+/* ═══════════════ TITLE ANIMATIONS ═══════════════ */
+
+/* "Age" word — each letter drops from above */
+@keyframes letterDrop{
+  0%  {transform:translateY(-60px) rotateX(90deg);opacity:0}
+  60% {transform:translateY(6px)   rotateX(-8deg);opacity:1}
+  80% {transform:translateY(-3px)  rotateX(4deg)}
+  100%{transform:translateY(0)     rotateX(0deg);opacity:1}
+}
+
+/* "Calculator" — each letter rises and sweeps color */
+@keyframes letterRise{
+  0%  {transform:translateY(50px) scale(.6);opacity:0;filter:blur(6px)}
+  70% {transform:translateY(-5px) scale(1.05);opacity:1;filter:blur(0)}
+  100%{transform:translateY(0)   scale(1);opacity:1;filter:blur(0)}
+}
+
+/* Underline draw */
+@keyframes drawLine{
+  from{width:0;opacity:0}
+  to  {width:100%;opacity:1}
+}
+
+/* Sparkle orbit */
+@keyframes sparkFloat{
+  0%  {transform:translate(0,0)   scale(0);opacity:0}
+  20% {opacity:1;scale:1}
+  80% {opacity:.8}
+  100%{transform:translate(var(--tx),var(--ty)) scale(0);opacity:0}
+}
+
+/* Glow pulse on "Age" */
+@keyframes wordGlow{
+  0%,100%{text-shadow:none}
+  50%    {text-shadow:0 0 30px rgba(201,151,44,.35),0 0 60px rgba(201,151,44,.15)}
+}
+
+/* Subtitle typewriter cursor */
+@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Letter shimmer sweep (for Calculator word) */
+@keyframes letterShimmer{
+  0%  {background-position:200% center}
+  100%{background-position:-200% center}
+}
+
+.title-age-word{
+  display:inline-flex;
+  perspective:600px;
+  animation:wordGlow 3s 1.5s ease infinite;
+}
+.title-age-letter{
+  display:inline-block;
+  animation:letterDrop .7s cubic-bezier(.34,1.56,.64,1) both;
+  color:var(--text);
+  transform-style:preserve-3d;
+}
+
+.title-calc-word{
+  display:inline-flex;
+  position:relative;
+}
+.title-calc-letter{
+  display:inline-block;
+  animation:letterRise .6s cubic-bezier(.34,1.4,.64,1) both;
+  background:linear-gradient(120deg,var(--gold) 0%,var(--gold-lt) 40%,#fff8e0 55%,var(--gold-lt) 65%,var(--gold) 100%);
+  background-size:300% auto;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation-fill-mode:both;
+}
+/* second pass shimmer after drop */
+.title-calc-letter.shimmer-on{
+  animation:letterRise .6s cubic-bezier(.34,1.4,.64,1) both,
+            letterShimmer 2.5s 1.2s linear infinite;
+}
+
+.title-underline{
+  display:block;
+  height:3px;
+  border-radius:99px;
+  background:linear-gradient(90deg,var(--gold),var(--gold-lt),var(--teal));
+  animation:drawLine .9s 1.4s cubic-bezier(.4,0,.2,1) both;
+  margin-top:4px;
+}
+
+/* Sparkles */
+.title-sparkle{
+  position:absolute;
+  pointer-events:none;
+  font-size:1rem;
+  animation:sparkFloat 1.8s ease-out both;
+}
+
+/* Subtitle typewriter */
+.subtitle-typed{
+  overflow:hidden;
+  white-space:nowrap;
+  border-right:2px solid var(--gold);
+  width:0;
+  animation:
+    subtitleExpand 1s .9s steps(44,end) forwards,
+    cursorBlink .75s 2s step-end 4,
+    noBorder 0s 5s forwards;
+}
+@keyframes subtitleExpand{to{width:100%}}
+@keyframes noBorder{to{border-right:none}}
+
+/* ═══════════════ CARD ═══════════════ */
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  transition:transform .35s cubic-bezier(.34,1.4,.64,1),
+             box-shadow .35s ease,border-color .3s;
+  will-change:transform;
+}
+.card:hover{
+  transform:translateY(-4px) scale(1.005);
+  box-shadow:0 16px 48px rgba(0,0,0,.1),0 0 0 1px var(--gold-glow);
+  border-color:rgba(201,151,44,.3);
+}
+html.dark .card{box-shadow:0 4px 24px rgba(0,0,0,.35),0 0 0 1px rgba(99,102,241,.1)}
+html.dark .card:hover{box-shadow:0 16px 48px rgba(0,0,0,.4),0 0 0 1px var(--gold-glow),0 0 32px rgba(251,191,36,.08)}
+
+/* ═══════════════ INPUTS ═══════════════ */
+input[type="date"]{
+  background:var(--cream);color:var(--text);
+  border:2px solid var(--border);border-radius:14px;
+  padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:1rem;
+  width:100%;outline:none;cursor:pointer;
+  transition:border-color .3s,box-shadow .3s,transform .2s;
+}
+input[type="date"]:focus{
+  border-color:var(--gold);
+  box-shadow:0 0 0 4px var(--gold-glow),0 4px 20px rgba(201,151,44,.1);
+  transform:translateY(-1px);
+}
+input[type="date"]::-webkit-calendar-picker-indicator{filter:opacity(.5);cursor:pointer}
+html.dark input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.8)}
+
+/* ═══════════════ STAT CARDS ═══════════════ */
+.stat-card{
+  background:var(--cream);border:1px solid var(--border);
+  border-radius:16px;padding:22px 16px;text-align:center;
+  transition:transform .3s,box-shadow .3s,border-color .3s;
+  position:relative;overflow:hidden;
+}
+.stat-card::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:radial-gradient(circle at 50% 0%,rgba(251,191,36,.14),transparent 70%);
+  opacity:0;transition:opacity .3s;
+}
+.stat-card:hover::after{opacity:1}
+.stat-card:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+.stat-val{
+  font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:700;
+  line-height:1;background:linear-gradient(135deg,var(--gold),var(--gold-lt));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.stat-val.teal-val{background:linear-gradient(135deg,var(--teal),var(--teal-lt))}
+.stat-val.rose-val{background:linear-gradient(135deg,var(--rose),#e88)}
+.stat-lbl{font-size:.75rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px}
+
+/* ═══════════════ FLIP CLOCK ═══════════════ */
+.flip-box{
+  display:inline-flex;flex-direction:column;align-items:center;
+  background:linear-gradient(160deg,var(--card) 0%,var(--cream) 100%);
+  border:1px solid var(--border);border-radius:14px;
+  padding:14px 10px;min-width:70px;
+  box-shadow:0 4px 14px rgba(0,0,0,.07),inset 0 1px 0 rgba(255,255,255,.5);
+  transition:box-shadow .3s;position:relative;overflow:hidden;
+}
+.flip-box::before{
+  content:'';position:absolute;left:0;right:0;top:50%;height:1px;
+  background:var(--border);opacity:.6;
+}
+html.dark .flip-box{box-shadow:0 4px 14px rgba(0,0,0,.2),0 0 0 1px rgba(99,102,241,.15);background:linear-gradient(160deg,var(--card) 0%,var(--cream) 100%)}
+.flip-num{
+  font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;
+  line-height:1.1;transition:all .15s ease;
+}
+.flip-lbl{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px;font-weight:600}
+
+/* ═══════════════ KEYFRAME LIBRARY ═══════════════ */
+@keyframes popIn{
+  0%{transform:scale(.7);opacity:0}
+  60%{transform:scale(1.08)}
+  80%{transform:scale(.97)}
+  100%{transform:scale(1);opacity:1}
+}
+@keyframes slideUp{
+  from{transform:translateY(30px);opacity:0}
+  to{transform:translateY(0);opacity:1}
+}
+@keyframes slideIn{
+  from{transform:translateX(-20px);opacity:0}
+  to{transform:translateX(0);opacity:1}
+}
+@keyframes glowPulse{
+  0%,100%{box-shadow:0 0 0 0 var(--gold-glow)}
+  50%{box-shadow:0 0 0 8px rgba(201,151,44,0)}
+}
+@keyframes spinOrbit{
+  from{transform:rotate(0deg) translateX(22px) rotate(0deg)}
+  to{transform:rotate(360deg) translateX(22px) rotate(-360deg)}
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes barReveal{from{width:0%}to{width:var(--w)}}
+@keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes shimmer{
+  0%{background-position:-400px 0}
+  100%{background-position:400px 0}
+}
+@keyframes confettiFall{
+  0%{transform:translateY(-20px) rotate(0deg);opacity:1}
+  100%{transform:translateY(100vh) rotate(720deg);opacity:0}
+}
+@keyframes modalIn{
+  from{transform:scale(.85) translateY(20px);opacity:0}
+  to{transform:scale(1) translateY(0);opacity:1}
+}
+@keyframes ripple{
+  0%{transform:scale(0);opacity:.4}
+  100%{transform:scale(4);opacity:0}
+}
+
+/* ═══════════════ UTILITY ANIMATIONS ═══════════════ */
+.pop    {animation:popIn    .45s cubic-bezier(.34,1.56,.64,1) forwards}
+.slide-up{animation:slideUp .5s ease forwards}
+.slide-in{animation:slideIn .4s ease forwards}
+
+/* Stagger helpers */
+.stagger-1{animation-delay:.05s}
+.stagger-2{animation-delay:.12s}
+.stagger-3{animation-delay:.19s}
+.stagger-4{animation-delay:.26s}
+.stagger-5{animation-delay:.33s}
+.stagger-6{animation-delay:.40s}
+.stagger-7{animation-delay:.47s}
+.stagger-8{animation-delay:.54s}
+.stagger-9{animation-delay:.61s}
+.stagger-10{animation-delay:.68s}
+
+/* Result section */
+.result-section{opacity:0;pointer-events:none;transition:opacity .4s}
+.result-section.visible{opacity:1;pointer-events:auto}
+
+/* ═══════════════ PROGRESS BAR ═══════════════ */
+.progress-track{
+  background:var(--border);border-radius:999px;height:8px;overflow:hidden;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.08);
+}
+.progress-fill{
+  height:100%;border-radius:999px;
+  background:linear-gradient(90deg,var(--teal),var(--gold),var(--gold-lt));
+  background-size:200% 100%;
+  animation:shimmer 2s linear infinite;
+  transition:width 1.2s cubic-bezier(.4,0,.2,1);
+}
+
+/* ═══════════════ LIVE DOT ═══════════════ */
+.live-dot{
+  width:9px;height:9px;border-radius:50%;background:var(--rose);
+  animation:glowPulse 1.8s ease infinite,blink 1.8s ease infinite;
+}
+
+/* ═══════════════ ARC ═══════════════ */
+.arc-track{fill:none;stroke:var(--border);stroke-width:10}
+.arc-fill{
+  fill:none;stroke-width:10;stroke-linecap:round;
+  transition:stroke-dashoffset 1.6s cubic-bezier(.4,0,.2,1);
+}
+
+/* ═══════════════ BADGES ═══════════════ */
+.zodiac-badge{
+  display:inline-flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,var(--gold),var(--gold-lt));color:#fff;
+  border-radius:50px;padding:11px 24px;font-weight:600;font-size:1.05rem;
+  box-shadow:0 6px 20px rgba(201,151,44,.35);
+  animation:breathe 3s ease infinite;
+}
+.chinese-badge{
+  display:inline-flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,var(--teal),var(--teal-lt));color:#fff;
+  border-radius:50px;padding:11px 24px;font-weight:600;font-size:1.05rem;
+  box-shadow:0 6px 20px rgba(42,127,111,.35);
+  animation:breathe 3s ease 1s infinite;
+}
+.gen-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:linear-gradient(135deg,var(--violet),#9b7fd4);color:#fff;
+  border-radius:50px;padding:9px 20px;font-weight:600;font-size:.95rem;
+  box-shadow:0 4px 16px rgba(107,79,160,.3);
+}
+
+/* ═══════════════ BUTTONS ═══════════════ */
+.btn{
+  background:transparent;border:1.5px solid var(--border);border-radius:10px;
+  padding:7px 16px;font-size:.82rem;font-family:'DM Sans',sans-serif;
+  cursor:pointer;color:var(--muted);position:relative;overflow:hidden;
+  transition:border-color .25s,color .25s,transform .2s,box-shadow .25s;
+}
+.btn::after{
+  content:'';position:absolute;inset:50% 50%;width:0;height:0;
+  background:rgba(201,151,44,.15);border-radius:50%;
+  transition:all .5s ease;
+}
+.btn:active::after{
+  width:200%;height:200%;inset:-50% -50%;
+}
+.btn:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-1px);box-shadow:0 4px 12px var(--gold-glow)}
+.btn.copied{border-color:var(--teal);color:var(--teal)}
+.btn.share:hover{border-color:var(--violet);color:var(--violet)}
+.toggle-btn{
+  background:var(--cream);border:1.5px solid var(--border);border-radius:50px;
+  padding:9px 20px;cursor:pointer;font-size:.85rem;font-family:'DM Sans',sans-serif;
+  color:var(--text);display:flex;align-items:center;gap:8px;flex-shrink:0;
+  transition:all .3s;
+}
+.toggle-btn:hover{
+  border-color:var(--gold);
+  box-shadow:0 4px 16px var(--gold-glow);
+  transform:translateY(-1px);
+}
+
+/* ═══════════════ FACTS ═══════════════ */
+.fact-chip{
+  background:var(--cream);border:1px solid var(--border);border-radius:12px;
+  padding:13px 16px;font-size:.88rem;color:var(--sub);
+  display:flex;align-items:flex-start;gap:12px;line-height:1.55;
+  opacity:0;
+  transition:transform .3s,box-shadow .3s,border-color .3s;
+}
+.fact-chip:hover{
+  transform:translateX(4px);border-color:var(--gold);
+  box-shadow:0 4px 16px var(--gold-glow);
+}
+html.dark .fact-chip:hover{border-color:var(--violet);box-shadow:0 4px 20px rgba(192,132,252,.2)}
+
+/* ═══════════════ PLANET BARS ═══════════════ */
+.planet-item{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 0;border-bottom:1px solid var(--border);
+  opacity:0;transform:translateX(-16px);
+  transition:opacity .4s,transform .4s;
+}
+.planet-item.revealed{opacity:1;transform:none}
+.planet-item:last-child{border-bottom:none}
+.pbar-track{flex:1;background:var(--border);border-radius:999px;height:6px;overflow:hidden;max-width:130px}
+.pbar-fill{height:100%;border-radius:999px;width:0%;
+  background:linear-gradient(90deg,var(--teal),var(--gold));
+  transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+
+/* ═══════════════ MILESTONES ═══════════════ */
+.milestone{
+  display:flex;align-items:center;gap:14px;padding:13px 0;
+  border-bottom:1px solid var(--border);
+  opacity:0;transform:translateY(10px);
+  transition:opacity .4s,transform .4s;
+}
+.milestone.revealed{opacity:1;transform:none}
+.milestone:last-child{border-bottom:none}
+.m-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;transition:all .3s}
+.milestone.past  .m-dot{background:var(--teal)}
+.milestone.next  .m-dot{
+  background:var(--gold);
+  box-shadow:0 0 0 5px rgba(251,191,36,.25);
+  animation:glowPulse 2s ease infinite;
+}
+.milestone.future .m-dot{background:var(--border)}
+
+/* ═══════════════ DETAIL MINI ═══════════════ */
+.detail-mini{
+  background:var(--cream);border:1px solid var(--border);border-radius:12px;
+  padding:13px;opacity:0;transform:scale(.95);
+  transition:opacity .35s,transform .35s,box-shadow .3s,border-color .3s;
+}
+.detail-mini.revealed{opacity:1;transform:scale(1)}
+.detail-mini:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);border-color:var(--gold)}
+
+/* ═══════════════ GEM TAGS ═══════════════ */
+.gem-tag{
+  display:inline-flex;align-items:center;gap:6px;padding:7px 16px;
+  border-radius:50px;border:1.5px solid var(--border);font-size:.83rem;
+  color:var(--sub);background:var(--cream);margin:3px;
+  transition:all .25s;
+}
+.gem-tag:hover{border-color:var(--gold);color:var(--gold);box-shadow:0 2px 10px var(--gold-glow)}
+
+/* ═══════════════ SECTION LABEL ═══════════════ */
+.slabel{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+html.dark .slabel{color:var(--teal-lt);opacity:.9}
+.divider{border:none;border-top:1px solid var(--border);margin:0}
+
+/* ═══════════════ BIRTHDAY BURST ═══════════════ */
+.confetti-piece{
+  position:fixed;width:10px;height:10px;border-radius:2px;
+  pointer-events:none;z-index:9999;
+  animation:confettiFall linear forwards;
+}
+
+/* ═══════════════ MODAL ═══════════════ */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,0);z-index:999;
+  display:none;align-items:center;justify-content:center;padding:16px;
+  transition:background .3s;
+}
+.modal-bg.open{display:flex;background:rgba(0,0,0,.55)}
+.modal{
+  background:var(--card);border-radius:24px;padding:30px;
+  width:100%;max-width:480px;border:1px solid var(--border);
+  position:relative;max-height:90vh;overflow-y:auto;
+  animation:modalIn .35s cubic-bezier(.34,1.4,.64,1) forwards;
+}
+.modal-close{
+  position:absolute;top:16px;right:16px;
+  background:var(--cream);border:1.5px solid var(--border);border-radius:50%;
+  width:34px;height:34px;cursor:pointer;font-size:1rem;
+  display:flex;align-items:center;justify-content:center;color:var(--muted);
+  transition:all .2s;
+}
+.modal-close:hover{border-color:var(--rose);color:var(--rose);transform:rotate(90deg)}
+.share-txt{
+  background:var(--cream);border:1px solid var(--border);border-radius:14px;
+  padding:20px;margin:16px 0;font-size:.85rem;color:var(--text);
+  line-height:1.85;white-space:pre-wrap;font-family:monospace;word-break:break-word;
+}
+
+/* ═══════════════ PLACEHOLDER ═══════════════ */
+#placeholder{
+  text-align:center;animation:breathe 4s ease infinite;
+}
+.placeholder-emoji{
+  font-size:4rem;display:block;margin-bottom:16px;
+  animation:popIn .6s .2s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* ═══════════════ SCROLLBAR ═══════════════ */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--paper)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+
+/* ═══════════════ MOBILE ═══════════════ */
+@media(max-width:520px){
+  .stat-val{font-size:1.9rem}
+  .flip-num{font-size:1.5rem}
+  .flip-box{min-width:56px;padding:10px 6px}
+  .two-col{grid-template-columns:1fr !important}
+}
+</style>
+</head>
+<body>
+
+<!-- Animated particle canvas -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- Share Modal -->
+<div class="modal-bg" id="shareModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="slabel" style="margin-bottom:6px">Share Your Age</div>
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--text);margin-bottom:2px">Age Summary Card</h3>
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:0">Copy and share with friends!</p>
+    <div class="share-txt" id="shareCardTxt"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" id="shareCardCopyBtn" onclick="copyShareCard()" style="flex:1">⎘ Copy Text</button>
+      <button class="btn" onclick="closeModal()" style="flex:1">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap max-w-2xl mx-auto px-4 py-10">
+
+  <!-- ── HEADER ── -->
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2.2rem;gap:12px">
+    <div style="flex:1">
+      <!-- eyebrow label -->
+      <div class="slabel" style="margin-bottom:12px;animation:slideIn .5s .05s ease both;opacity:0;animation-fill-mode:both">
+        — Calculate Your Age
+      </div>
+
+      <!-- Title block -->
+      <div style="position:relative;display:inline-block">
+
+        <!-- Sparkle emojis that burst on load -->
+        <span class="title-sparkle" style="top:-14px;left:-10px;--tx:-18px;--ty:-28px;animation-delay:.9s">✨</span>
+        <span class="title-sparkle" style="top:-10px;right:30px;  --tx:22px; --ty:-32px;animation-delay:1.1s">⭐</span>
+        <span class="title-sparkle" style="bottom:8px;right:-14px;--tx:24px; --ty:18px; animation-delay:1.3s;font-size:.8rem">✦</span>
+        <span class="title-sparkle" style="bottom:0;left:50px;    --tx:-14px;--ty:22px; animation-delay:1.0s;font-size:.75rem">✧</span>
+
+        <h1 id="titleH1"
+            style="font-family:'Playfair Display',serif;
+                   font-size:clamp(2.2rem,7vw,3.4rem);
+                   font-weight:700;line-height:1.05;margin:0;
+                   display:flex;flex-wrap:wrap;align-items:baseline;gap:0 .22em">
+
+          <!-- "Age" — letters drop from above -->
+          <span class="title-age-word" id="wordAge"></span>
+
+          <!-- "Calculator" — letters rise up with shimmer -->
+          <span class="title-calc-word" id="wordCalc" style="position:relative">
+            <span id="calcLetters" style="display:inline-flex"></span>
+            <!-- animated underline -->
+            <span class="title-underline" style="position:absolute;bottom:-6px;left:0;right:0"></span>
+          </span>
+
+        </h1>
+      </div>
+
+      <!-- Subtitle with typewriter -->
+      <div style="margin-top:14px;overflow:hidden;height:1.4em">
+        <p class="subtitle-typed"
+           style="color:var(--muted);font-size:.9rem;margin:0;display:inline-block">
+          Discover your exact age, zodiac, milestones &amp; more
+        </p>
+      </div>
+    </div>
+
+    <button class="toggle-btn" onclick="toggleMode()" style="margin-top:4px">
+      <span id="modeIcon">☀️</span><span id="modeLabel">Light</span>
+    </button>
+  </div>
+
+  <!-- ── INPUT CARD ── -->
+  <div class="card p-6 mb-6" style="animation:slideUp .55s .1s ease both">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem" class="two-col">
+      <div>
+        <label style="display:block;font-size:.8rem;font-weight:600;color:var(--muted);
+                      letter-spacing:.07em;text-transform:uppercase;margin-bottom:9px">
+          Date of Birth <span style="color:var(--gold)">*</span>
+        </label>
+        <input type="date" id="dob" onchange="calculate()"/>
+        <div style="font-size:.74rem;color:var(--muted);margin-top:6px">Enter your birth date</div>
+      </div>
+      <div>
+        <label style="display:block;font-size:.8rem;font-weight:600;color:var(--muted);
+                      letter-spacing:.07em;text-transform:uppercase;margin-bottom:9px">
+          As of Date
+        </label>
+        <input type="date" id="targetDate" onchange="calculate()"/>
+        <div style="font-size:.74rem;color:var(--muted);margin-top:6px">Auto-filled with today</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════ RESULTS ══════════════════ -->
+  <div class="result-section" id="results">
+
+    <!-- ① LIVE TICKER -->
+    <div class="card p-5 mb-4" id="cardLive" style="opacity:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div class="slabel" style="margin-bottom:4px">Live Age Counter</div>
+          <div style="font-size:.76rem;color:var(--muted)">Ticking in real time</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="live-dot"></div>
+          <span style="font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--muted)">LIVE</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center">
+        <div class="flip-box">
+          <div class="flip-num" id="liveYears" style="color:var(--gold)">0</div>
+          <div class="flip-lbl">Years</div>
+        </div>
+        <div class="flip-box">
+          <div class="flip-num" id="liveDays" style="color:var(--teal)">0</div>
+          <div class="flip-lbl">Days</div>
+        </div>
+        <div class="flip-box">
+          <div class="flip-num" id="liveHours" style="color:var(--rose)">00</div>
+          <div class="flip-lbl">Hours</div>
+        </div>
+        <div class="flip-box">
+          <div class="flip-num" id="liveSeconds" style="color:var(--violet)">00</div>
+          <div class="flip-lbl">Seconds</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② EXACT AGE + LIFE METER -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="two-col">
+
+      <div class="card p-5" id="cardAge" style="opacity:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:6px">
+          <div class="slabel">Exact Age</div>
+          <div style="display:flex;gap:7px">
+            <button class="btn" id="copyBtn" onclick="copyAge()">⎘ Copy</button>
+            <button class="btn share" onclick="openModal()">↗ Share</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+          <div class="stat-card">
+            <div class="stat-val" id="years">0</div>
+            <div class="stat-lbl">Years</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val teal-val" id="months">0</div>
+            <div class="stat-lbl">Months</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val rose-val" id="days">0</div>
+            <div class="stat-lbl">Days</div>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:.74rem;color:var(--muted);margin-bottom:8px">
+            <span>Year Progress</span><span id="yearPct" style="font-weight:600;color:var(--gold)">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressBar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Life Meter Arc -->
+      <div class="card p-5" id="cardLife" style="opacity:0;text-align:center">
+        <div class="slabel" style="margin-bottom:4px">Life Meter</div>
+        <div style="font-size:.74rem;color:var(--muted);margin-bottom:12px">Based on avg 72 yr lifespan</div>
+        <div style="position:relative;display:inline-block">
+          <svg width="140" height="82" viewBox="0 0 140 82">
+            <path d="M12,76 A62,62 0 0,1 128,76" class="arc-track"/>
+            <path id="lifeArc" d="M12,76 A62,62 0 0,1 128,76" class="arc-fill"
+              stroke="url(#arcG)" stroke-dasharray="196" stroke-dashoffset="196"/>
+            <defs>
+              <linearGradient id="arcG" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="var(--teal)"/>
+                <stop offset="50%" stop-color="var(--gold)"/>
+                <stop offset="100%" stop-color="var(--gold-lt)"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);white-space:nowrap">
+            <div style="font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:700;color:var(--gold)" id="lifePct">0%</div>
+            <div style="font-size:.68rem;color:var(--muted)">of life lived</div>
+          </div>
+        </div>
+        <div style="font-size:.78rem;color:var(--sub);margin-top:10px;line-height:1.5" id="lifeRemaining">—</div>
+      </div>
+    </div>
+
+    <!-- ③ TOTALS + BIRTHDAY -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="two-col">
+
+      <div class="card p-5" id="cardTotals" style="opacity:0">
+        <div class="slabel" style="margin-bottom:14px">Total Lived</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;
+                    background:linear-gradient(135deg,var(--gold),var(--gold-lt));
+                    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+                    line-height:1" id="totalDays">0</div>
+        <div style="font-size:.76rem;color:var(--muted);margin-top:5px">days on Earth</div>
+        <hr class="divider" style="margin:12px 0"/>
+        <div style="font-size:.86rem;color:var(--sub);font-weight:500" id="totalWeeks">—</div>
+        <div style="font-size:.7rem;color:var(--muted)">total weeks</div>
+        <hr class="divider" style="margin:10px 0"/>
+        <div style="font-size:.86rem;color:var(--sub);font-weight:500" id="totalHours">—</div>
+        <div style="font-size:.7rem;color:var(--muted)">approximate hours</div>
+      </div>
+
+      <div class="card p-5" id="cardBday" style="opacity:0;text-align:center">
+        <div class="slabel" style="margin-bottom:14px">Next Birthday</div>
+        <div style="font-family:'Playfair Display',serif;font-size:3rem;font-weight:700;
+                    background:linear-gradient(135deg,var(--rose),#e88);
+                    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+                    line-height:1" id="bDaysLeft">0</div>
+        <div style="font-size:.76rem;color:var(--muted);margin-top:5px" id="bDaysLabel">days away</div>
+        <hr class="divider" style="margin:12px 0"/>
+        <div style="font-size:.84rem;color:var(--sub);font-weight:600" id="nextBdayDate">—</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px" id="bdayWeekday">—</div>
+      </div>
+    </div>
+
+    <!-- ④ BIRTH DETAILS -->
+    <div class="card p-5 mb-4" id="cardDetails" style="opacity:0">
+      <div class="slabel" style="margin-bottom:16px">Birth Details</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px" id="birthDetails"></div>
+    </div>
+
+    <!-- ⑤ GENERATION + NUMEROLOGY -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="two-col">
+      <div class="card p-5" id="cardGen" style="opacity:0">
+        <div class="slabel" style="margin-bottom:14px">Your Generation</div>
+        <div id="genBadge">—</div>
+        <div style="font-size:.83rem;color:var(--sub);margin-top:12px;line-height:1.55" id="genDesc">—</div>
+      </div>
+      <div class="card p-5" id="cardNum" style="opacity:0">
+        <div class="slabel" style="margin-bottom:14px">Life Path Number</div>
+        <div style="font-family:'Playfair Display',serif;font-size:3.5rem;font-weight:700;
+                    background:linear-gradient(135deg,var(--violet),#c0a0ff);
+                    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+                    line-height:1" id="lifePathNum">—</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:4px;letter-spacing:.06em">NUMEROLOGY</div>
+        <div style="font-size:.83rem;color:var(--sub);margin-top:10px;line-height:1.55" id="lifePathDesc">—</div>
+      </div>
+    </div>
+
+    <!-- ⑥ BIRTH SYMBOLS -->
+    <div class="card p-5 mb-4" id="cardSymbols" style="opacity:0">
+      <div class="slabel" style="margin-bottom:14px">Birth Month Symbols</div>
+      <div id="birthSymbols" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+
+    <!-- ⑦ ZODIAC -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px" class="two-col">
+      <div class="card p-5" id="cardWZ" style="opacity:0">
+        <div class="slabel" style="margin-bottom:16px">Western Zodiac</div>
+        <div id="westernZodiac">—</div>
+        <div style="font-size:.76rem;color:var(--muted);margin-top:11px" id="zodiacRange">—</div>
+        <div style="font-size:.83rem;color:var(--sub);margin-top:7px;line-height:1.5" id="zodiacTrait">—</div>
+      </div>
+      <div class="card p-5" id="cardCZ" style="opacity:0">
+        <div class="slabel" style="margin-bottom:16px">Chinese Zodiac</div>
+        <div id="chineseZodiac">—</div>
+        <div style="font-size:.76rem;color:var(--muted);margin-top:11px" id="chineseElement">—</div>
+        <div style="font-size:.83rem;color:var(--sub);margin-top:7px;line-height:1.5" id="chineseTrait">—</div>
+      </div>
+    </div>
+
+    <!-- ⑧ PLANET AGES -->
+    <div class="card p-5 mb-4" id="cardPlanets" style="opacity:0">
+      <div class="slabel" style="margin-bottom:5px">Your Age on Other Planets</div>
+      <div style="font-size:.74rem;color:var(--muted);margin-bottom:16px">Based on each planet's orbital period around the Sun</div>
+      <div id="planetAges"></div>
+    </div>
+
+    <!-- ⑨ MILESTONES -->
+    <div class="card p-5 mb-4" id="cardMilestones" style="opacity:0">
+      <div class="slabel" style="margin-bottom:5px">Life Milestones</div>
+      <div style="font-size:.74rem;color:var(--muted);margin-bottom:16px">Key dates past &amp; upcoming</div>
+      <div id="milestones"></div>
+    </div>
+
+    <!-- ⑩ FUN FACTS -->
+    <div class="card p-5 mb-6" id="cardFacts" style="opacity:0">
+      <div class="slabel" style="margin-bottom:16px">Fun Facts About Your Life</div>
+      <div id="funFacts" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+
+  </div><!-- /results -->
+
+  <!-- Placeholder -->
+  <div id="placeholder" class="card p-12">
+    <span class="placeholder-emoji">🎂</span>
+    <div style="font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--text);margin-bottom:10px;font-weight:600">
+      Enter your date of birth
+    </div>
+    <div style="font-size:.9rem;color:var(--muted);max-width:280px;margin:0 auto;line-height:1.6">
+      Your age, zodiac, life milestones &amp; fun facts will appear instantly
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:28px;font-size:.76rem;color:var(--muted)">
+    Made with ♡ · All calculations run locally in your browser · No data sent anywhere
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   PARTICLE BACKGROUND
+═══════════════════════════════════════ */
+(function(){
+  const c=document.getElementById('bg-canvas');
+  const ctx=c.getContext('2d');
+  let W,H,particles=[];
+  function resize(){ W=c.width=innerWidth; H=c.height=innerHeight; }
+  resize(); addEventListener('resize',resize);
+  function rnd(a,b){return a+(b-a)*Math.random()}
+  const isDark=()=>document.documentElement.classList.contains('dark');
+  for(let i=0;i<55;i++) particles.push({
+    x:rnd(0,1),y:rnd(0,1),
+    r:rnd(.5,2.5),vx:rnd(-.00015,.00015),vy:rnd(-.00012,.00012),
+    a:rnd(.08,.35)
+  });
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const gold=isDark()?'251,191,36':'201,151,44';
+    const teal=isDark()?'52,211,153':'42,127,111';
+    const violet=isDark()?'192,132,252':'107,79,160';
+    particles.forEach(p=>{
+      p.x=(p.x+p.vx+1)%1; p.y=(p.y+p.vy+1)%1;
+      const r=Math.random(); const col=r<.45?gold:r<.75?teal:violet;
+      ctx.beginPath();
+      ctx.arc(p.x*W,p.y*H,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${col},${p.a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ═══════════════════════════════════════
+   TITLE LETTER ANIMATION
+═══════════════════════════════════════ */
+(function buildTitle(){
+  // "Age" — drop in with bounce, one by one
+  const ageEl = document.getElementById('wordAge');
+  'Age'.split('').forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.className = 'title-age-letter';
+    s.textContent = ch;
+    s.style.animationDelay = (0.05 + i * 0.12) + 's';
+    ageEl.appendChild(s);
+  });
+
+  // "Calculator" — rise up with shimmer, one by one
+  const calcEl = document.getElementById('calcLetters');
+  'Calculator'.split('').forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.className = 'title-calc-letter';
+    s.textContent = ch === ' ' ? '\u00a0' : ch;
+    const delay = 0.25 + i * 0.07;
+    s.style.animationDelay = delay + 's';
+    // Kick on the shimmer sweep a bit after the rise finishes
+    setTimeout(() => s.classList.add('shimmer-on'), (delay + 0.7) * 1000);
+    calcEl.appendChild(s);
+  });
+})();
+
+
+const _today=new Date();
+const _fmt=d=>d.toISOString().split('T')[0];
+document.getElementById('targetDate').value=_fmt(_today);
+document.getElementById('dob').max=_fmt(_today);
+let liveInterval=null, _shareData=null;
+
+/* ═══════════════════════════════════════
+   DARK MODE
+═══════════════════════════════════════ */
+let isDark=true; // default to dark
+applyMode();
+function toggleMode(){ isDark=!isDark; applyMode(); }
+function applyMode(){
+  document.documentElement.classList.toggle('dark',isDark);
+  document.getElementById('modeIcon').textContent=isDark?'☀️':'🌙';
+  document.getElementById('modeLabel').textContent=isDark?'Light':'Dark';
+}
+
+/* ═══════════════════════════════════════
+   DATA TABLES
+═══════════════════════════════════════ */
+const WZ=[
+  {name:'Capricorn', emoji:'♑',start:[12,22],end:[1,19], trait:'Disciplined, ambitious, patient'},
+  {name:'Aquarius',  emoji:'♒',start:[1,20], end:[2,18], trait:'Independent, original, humanitarian'},
+  {name:'Pisces',    emoji:'♓',start:[2,19], end:[3,20], trait:'Compassionate, artistic, wise'},
+  {name:'Aries',     emoji:'♈',start:[3,21], end:[4,19], trait:'Courageous, energetic, confident'},
+  {name:'Taurus',    emoji:'♉',start:[4,20], end:[5,20], trait:'Reliable, patient, devoted'},
+  {name:'Gemini',    emoji:'♊',start:[5,21], end:[6,20], trait:'Adaptable, curious, communicative'},
+  {name:'Cancer',    emoji:'♋',start:[6,21], end:[7,22], trait:'Intuitive, emotional, nurturing'},
+  {name:'Leo',       emoji:'♌',start:[7,23], end:[8,22], trait:'Creative, generous, warm-hearted'},
+  {name:'Virgo',     emoji:'♍',start:[8,23], end:[9,22], trait:'Analytical, kind, hardworking'},
+  {name:'Libra',     emoji:'♎',start:[9,23], end:[10,22],trait:'Diplomatic, gracious, fair-minded'},
+  {name:'Scorpio',   emoji:'♏',start:[10,23],end:[11,21],trait:'Resourceful, brave, passionate'},
+  {name:'Sagittarius',emoji:'♐',start:[11,22],end:[12,21],trait:'Generous, idealistic, humorous'},
+];
+const CZ=[
+  {name:'Rat',    emoji:'🐭',element:'Water',trait:'Intelligent, adaptable, quick-witted'},
+  {name:'Ox',     emoji:'🐂',element:'Earth',trait:'Diligent, dependable, strong'},
+  {name:'Tiger',  emoji:'🐯',element:'Wood', trait:'Brave, confident, competitive'},
+  {name:'Rabbit', emoji:'🐰',element:'Wood', trait:'Quiet, elegant, kind, responsible'},
+  {name:'Dragon', emoji:'🐲',element:'Earth',trait:'Confident, intelligent, enthusiastic'},
+  {name:'Snake',  emoji:'🐍',element:'Fire', trait:'Enigmatic, intuitive, introspective'},
+  {name:'Horse',  emoji:'🐴',element:'Fire', trait:'Energetic, independent, impatient'},
+  {name:'Goat',   emoji:'🐐',element:'Earth',trait:'Calm, gentle, sympathetic'},
+  {name:'Monkey', emoji:'🐒',element:'Metal',trait:'Witty, intelligent, magnetic'},
+  {name:'Rooster',emoji:'🐓',element:'Metal',trait:'Observant, hardworking, courageous'},
+  {name:'Dog',    emoji:'🐕',element:'Earth',trait:'Loyal, honest, diligent'},
+  {name:'Pig',    emoji:'🐷',element:'Water',trait:'Compassionate, generous, diligent'},
+];
+const PLANETS=[
+  {name:'Mercury',emoji:'☿',years:.2408},
+  {name:'Venus',  emoji:'♀',years:.6152},
+  {name:'Mars',   emoji:'♂',years:1.8808},
+  {name:'Jupiter',emoji:'♃',years:11.862},
+  {name:'Saturn', emoji:'♄',years:29.457},
+  {name:'Uranus', emoji:'⛢',years:84.011},
+  {name:'Neptune',emoji:'♆',years:164.8},
+];
+const GENS=[
+  {name:'Generation Alpha',  emoji:'🌐',range:[2013,2025],desc:'Digital natives born with AI and smartphones as everyday norms.'},
+  {name:'Generation Z',      emoji:'📱',range:[1997,2012],desc:'True digital natives — socially conscious, creative, entrepreneurial.'},
+  {name:'Millennials',       emoji:'💻',range:[1981,1996],desc:'Grew up witnessing the internet revolution and social media era.'},
+  {name:'Generation X',      emoji:'📼',range:[1965,1980],desc:'Independent, adaptable — bridged the analog and digital worlds.'},
+  {name:'Baby Boomers',      emoji:'🎸',range:[1946,1964],desc:'Post-war optimism, witnessed great social and cultural transformation.'},
+  {name:'Silent Generation', emoji:'📻',range:[1928,1945],desc:'Disciplined, patriotic — lived through the Great Depression era.'},
+  {name:'Greatest Generation',emoji:'🏅',range:[1901,1927],desc:'Faced World Wars, shaped modern democracy and resilience.'},
+];
+const LPN={
+  1:'Leader, independent, ambitious — a pioneer who blazes their own trail.',
+  2:'Peacemaker, cooperative, sensitive — diplomatic and highly intuitive.',
+  3:'Creative, expressive, social — an artist and natural communicator.',
+  4:'Practical, stable, hardworking — the builder with discipline and patience.',
+  5:'Freedom-loving, adventurous, versatile — craves change and new experiences.',
+  6:'Nurturing, responsible, caring — family and community come first.',
+  7:'Analytical, spiritual, wise — a seeker of truth and deep knowledge.',
+  8:'Ambitious, authoritative, successful — natural ability with money and power.',
+  9:'Compassionate, humanitarian, generous — devoted to serving the world.',
+  11:'Master Number: Highly intuitive, spiritual, inspirational visionary.',
+  22:'Master Number: The Master Builder — turns dreams into grand realities.',
+  33:'Master Number: The Master Teacher — devoted to uplifting all of humanity.',
+};
+const SYM=[
+  {stone:'Garnet',    flower:'Carnation',    emoji:'💎'},
+  {stone:'Amethyst',  flower:'Violet',       emoji:'💜'},
+  {stone:'Aquamarine',flower:'Daffodil',     emoji:'💙'},
+  {stone:'Diamond',   flower:'Daisy',        emoji:'💍'},
+  {stone:'Emerald',   flower:'Lily of Valley',emoji:'💚'},
+  {stone:'Pearl',     flower:'Rose',         emoji:'🦪'},
+  {stone:'Ruby',      flower:'Larkspur',     emoji:'❤️'},
+  {stone:'Peridot',   flower:'Poppy',        emoji:'🌿'},
+  {stone:'Sapphire',  flower:'Aster',        emoji:'💎'},
+  {stone:'Opal',      flower:'Marigold',     emoji:'🔮'},
+  {stone:'Topaz',     flower:'Chrysanthemum',emoji:'🧡'},
+  {stone:'Turquoise', flower:'Narcissus',    emoji:'🩵'},
+];
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MSHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WDAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const SEASONS=[
+  'Winter ❄️','Winter ❄️','Spring 🌸','Spring 🌸',
+  'Summer ☀️','Summer ☀️','Monsoon 🌧️','Monsoon 🌧️',
+  'Autumn 🍂','Autumn 🍂','Winter ❄️','Winter ❄️',
+];
+
+/* ═══════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════ */
+function getWZ(m,d){
+  for(const z of WZ){
+    const[sm,sd]=z.start,[em,ed]=z.end;
+    if((m===sm&&d>=sd)||(m===em&&d<=ed)) return z;
+  }
+  return WZ[0];
+}
+function getCZ(y){ return CZ[((y-1900)%12+12)%12]; }
+function getGen(y){ for(const g of GENS) if(y>=g.range[0]&&y<=g.range[1]) return g; return null; }
+function getLPN(s){
+  const d=s.replace(/-/g,'').split('').map(Number).reduce((a,b)=>a+b,0);
+  let n=d; while(n>9&&n!==11&&n!==22&&n!==33) n=String(n).split('').map(Number).reduce((a,b)=>a+b,0);
+  return n;
+}
+function leapCount(a,b){ let c=0; for(let y=a;y<=b;y++) if((y%4===0&&y%100!==0)||y%400===0) c++; return c; }
+function big(n){ if(n>=1e9)return(n/1e9).toFixed(2)+' billion'; if(n>=1e6)return(n/1e6).toFixed(2)+' million'; return fN(n); }
+function fN(n){ return Math.round(n).toLocaleString('en-US'); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function wkNum(d){ return Math.ceil(((d-new Date(d.getFullYear(),0,1))/864e5+new Date(d.getFullYear(),0,1).getDay()+1)/7); }
+function doy(d){ return Math.floor((d-new Date(d.getFullYear(),0,0))/864e5); }
+function isLeap(y){ return (y%4===0&&y%100!==0)||y%400===0; }
+function fmtD(d){ return d.toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'}); }
+
+/* ═══════════════════════════════════════
+   ANIMATED NUMBER COUNTER
+═══════════════════════════════════════ */
+function animCount(id,target,duration=600){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const start=parseInt(el.textContent)||0;
+  const range=target-start;
+  if(range===0){el.textContent=target;return;}
+  const t0=performance.now();
+  function step(t){
+    const prog=Math.min(1,(t-t0)/duration);
+    const ease=1-Math.pow(1-prog,3);
+    el.textContent=Math.round(start+range*ease);
+    el.classList.add('pop');
+    if(prog<1) requestAnimationFrame(step);
+    else{ el.textContent=target; }
+  }
+  requestAnimationFrame(step);
+}
+
+/* Card reveal helper */
+function revealCard(id,delay=0){
+  const el=document.getElementById(id);
+  if(!el) return;
+  setTimeout(()=>{
+    el.style.transition='opacity .5s ease, transform .5s cubic-bezier(.34,1.2,.64,1)';
+    el.style.transform='translateY(20px)';
+    el.style.opacity='0';
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        el.style.transform='translateY(0)';
+        el.style.opacity='1';
+      });
+    });
+  },delay);
+}
+
+/* ═══════════════════════════════════════
+   LIVE TICKER
+═══════════════════════════════════════ */
+function startTicker(dobMs){
+  if(liveInterval) clearInterval(liveInterval);
+  let prevSec=-1;
+  function tick(){
+    const ms=Date.now()-dobMs; if(ms<0) return;
+    const s=Math.floor(ms/1000);
+    if(s===prevSec) return; prevSec=s;
+    const sec=s%60, hr=Math.floor(s/3600), hrM=hr%24;
+    const dy=Math.floor(hr/24), yr=Math.floor(dy/365.25);
+    const dyR=dy-Math.floor(yr*365.25);
+    const yEl=document.getElementById('liveYears');
+    const dEl=document.getElementById('liveDays');
+    if(yEl) yEl.textContent=yr;
+    if(dEl) dEl.textContent=fN(dyR);
+    document.getElementById('liveHours').textContent=pad(hrM);
+    const secEl=document.getElementById('liveSeconds');
+    if(secEl){
+      secEl.style.transform='translateY(-4px)';
+      secEl.style.opacity='0';
+      secEl.textContent=pad(sec);
+      setTimeout(()=>{ secEl.style.transform=''; secEl.style.opacity='1'; },60);
+    }
+  }
+  tick();
+  liveInterval=setInterval(tick,200);
+}
+
+/* ═══════════════════════════════════════
+   CONFETTI BURST
+═══════════════════════════════════════ */
+function launchConfetti(){
+  const colors=['#c9972c','#e8be5a','#2a7f6f','#3ba898','#c0454a','#6b4fa0','#fff'];
+  for(let i=0;i<80;i++){
+    const p=document.createElement('div');
+    p.className='confetti-piece';
+    p.style.cssText=`
+      left:${Math.random()*100}vw;
+      top:-12px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      width:${6+Math.random()*8}px;
+      height:${6+Math.random()*8}px;
+      border-radius:${Math.random()>.5?'50%':'2px'};
+      animation-duration:${2+Math.random()*2}s;
+      animation-delay:${Math.random()*.8}s;
+      opacity:1;
+    `;
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),(4000));
+  }
+}
+
+/* ═══════════════════════════════════════
+   MILESTONES
+═══════════════════════════════════════ */
+function buildMilestones(dob,target){
+  const D=864e5, items=[];
+  [1000,5000,8000,10000,15000,20000,25000,30000].forEach(d=>{
+    items.push({label:`${fN(d)} Days Lived`,emoji:'📅',date:new Date(dob.getTime()+d*D)});
+  });
+  [10,18,21,25,30,40,50,60,70,75,80,90,100].forEach(y=>{
+    items.push({label:`${y} Years Old`,emoji:'🎂',date:new Date(dob.getFullYear()+y,dob.getMonth(),dob.getDate())});
+  });
+  [1e8,5e8,1e9,2e9,3e9].forEach(s=>{
+    items.push({label:`${big(s)} Seconds`,emoji:'⏱️',date:new Date(dob.getTime()+s*1000)});
+  });
+  items.sort((a,b)=>a.date-b.date);
+  let nxt=false;
+  return items.map(it=>{
+    const diff=Math.ceil((it.date-target)/D);
+    let cls='past';
+    if(diff>0&&!nxt){cls='next';nxt=true;}
+    else if(diff>0) cls='future';
+    return{...it,diff,cls};
+  });
+}
+
+/* ═══════════════════════════════════════
+   MAIN CALCULATE
+═══════════════════════════════════════ */
+function calculate(){
+  const dobVal=document.getElementById('dob').value;
+  const tarVal=document.getElementById('targetDate').value;
+  if(!dobVal||!tarVal){ hideResults(); return; }
+  const dob=new Date(dobVal+'T00:00:00');
+  const tar=new Date(tarVal+'T00:00:00');
+  if(dob>tar){ hideResults(); return; }
+
+  document.getElementById('placeholder').style.display='none';
+  document.getElementById('results').classList.add('visible');
+
+  const DAY=864e5;
+
+  /* Exact age */
+  let yrs=tar.getFullYear()-dob.getFullYear();
+  let mos=tar.getMonth()-dob.getMonth();
+  let dys=tar.getDate()-dob.getDate();
+  if(dys<0){ mos--; dys+=new Date(tar.getFullYear(),tar.getMonth(),0).getDate(); }
+  if(mos<0){ yrs--; mos+=12; }
+
+  /* Reveal cards with stagger */
+  const cards=['cardLive','cardAge','cardLife','cardTotals','cardBday',
+               'cardDetails','cardGen','cardNum','cardSymbols',
+               'cardWZ','cardCZ','cardPlanets','cardMilestones','cardFacts'];
+  cards.forEach((id,i)=>revealCard(id,i*60));
+
+  /* Animated stat counters */
+  animCount('years',yrs,700);
+  animCount('months',mos,700);
+  animCount('days',dys,700);
+
+  /* Year progress */
+  const pct=Math.round((mos*30.44+dys)/365.25*100);
+  setTimeout(()=>{
+    document.getElementById('yearPct').textContent=pct+'%';
+    document.getElementById('progressBar').style.width=pct+'%';
+  },400);
+
+  /* Life arc */
+  const lp=Math.min(100,Math.round(yrs/72*100));
+  document.getElementById('lifePct').textContent=lp+'%';
+  setTimeout(()=>{ document.getElementById('lifeArc').style.strokeDashoffset=196-(196*lp/100); },500);
+  document.getElementById('lifeRemaining').textContent=
+    Math.max(0,72-yrs)>0?`~${Math.max(0,72-yrs)} years remaining (avg 72 yr)`:'You have exceeded the average lifespan! 🌟';
+
+  /* Totals */
+  const td=Math.floor((tar-dob)/DAY);
+  const tw=Math.floor(td/7);
+  const th=td*24;
+  setTimeout(()=>{
+    document.getElementById('totalDays').textContent=fN(td);
+    document.getElementById('totalWeeks').textContent=fN(tw);
+    document.getElementById('totalHours').textContent=fN(th);
+  },300);
+
+  /* Live ticker */
+  const isToday=(tarVal===_fmt(new Date()));
+  if(isToday){ startTicker(dob.getTime()); }
+  else{
+    if(liveInterval) clearInterval(liveInterval);
+    document.getElementById('liveYears').textContent=yrs;
+    document.getElementById('liveDays').textContent=fN(Math.max(0,td-Math.floor(yrs*365.25)));
+    document.getElementById('liveHours').textContent='—';
+    document.getElementById('liveSeconds').textContent='—';
+  }
+
+  /* Next birthday */
+  let nb=new Date(tar.getFullYear(),dob.getMonth(),dob.getDate());
+  if(nb<=tar) nb.setFullYear(nb.getFullYear()+1);
+  const dtb=Math.ceil((nb-tar)/DAY);
+  const isBday=(tar.getDate()===dob.getDate()&&tar.getMonth()===dob.getMonth());
+  if(isBday){ launchConfetti(); }
+  document.getElementById('bDaysLeft').textContent=isBday?'🎉':dtb;
+  document.getElementById('bDaysLabel').textContent=isBday?'Happy Birthday! 🎂':'days away';
+  document.getElementById('nextBdayDate').textContent=fmtD(nb);
+  document.getElementById('bdayWeekday').textContent='on a '+WDAYS[nb.getDay()];
+
+  /* Birth details */
+  const dm=dob.getMonth();
+  const leap=isLeap(dob.getFullYear());
+  const details=[
+    {icon:'📅',label:'Day of Week',     val:WDAYS[dob.getDay()]},
+    {icon:'🌿',label:'Season',          val:SEASONS[dm]},
+    {icon:'🗓️',label:'Week Number',     val:`Week ${wkNum(dob)} of the year`},
+    {icon:'🌍',label:'Day of Year',     val:`Day ${doy(dob)} of ${leap?366:365}`},
+    {icon:'🔁',label:'Leap Year Born',  val:leap?`✅ Yes — ${dob.getFullYear()} was a leap year`:`❌ No — not a leap year`},
+    {icon:'🔢',label:'Birth Year',      val:dob.getFullYear()},
+  ];
+  setTimeout(()=>{
+    document.getElementById('birthDetails').innerHTML=details.map((d,i)=>`
+      <div class="detail-mini stagger-${i+1}" style="animation:slideUp .4s ${i*.07}s ease both">
+        <div style="font-size:1.2rem;margin-bottom:5px">${d.icon}</div>
+        <div style="font-size:.68rem;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;font-weight:600">${d.label}</div>
+        <div style="font-size:.88rem;color:var(--text);font-weight:500;margin-top:4px">${d.val}</div>
+      </div>`).join('');
+    document.querySelectorAll('.detail-mini').forEach((el,i)=>{
+      setTimeout(()=>el.classList.add('revealed'),i*70);
+    });
+  },400);
+
+  /* Generation */
+  const gen=getGen(dob.getFullYear());
+  if(gen){
+    document.getElementById('genBadge').innerHTML=`<div class="gen-badge"><span style="font-size:1.2rem">${gen.emoji}</span>${gen.name}</div>`;
+    document.getElementById('genDesc').innerHTML=`${gen.desc}<br><span style="color:var(--muted);font-size:.74rem">${gen.range[0]}–${gen.range[1]}</span>`;
+  }
+
+  /* Numerology */
+  const lpn=getLPN(dobVal);
+  document.getElementById('lifePathNum').textContent=lpn;
+  document.getElementById('lifePathDesc').textContent=LPN[lpn]||'—';
+
+  /* Symbols */
+  const sym=SYM[dm];
+  document.getElementById('birthSymbols').innerHTML=[
+    `<span class="gem-tag">${sym.emoji} Birthstone: <strong>${sym.stone}</strong></span>`,
+    `<span class="gem-tag">🌸 Birth Flower: <strong>${sym.flower}</strong></span>`,
+    `<span class="gem-tag">🗓️ Birth Month: <strong>${MONTHS[dm]}</strong></span>`,
+  ].join('');
+
+  /* Western Zodiac */
+  const wz=getWZ(dm+1,dob.getDate());
+  document.getElementById('westernZodiac').innerHTML=`<div class="zodiac-badge"><span style="font-size:1.5rem">${wz.emoji}</span>${wz.name}</div>`;
+  document.getElementById('zodiacRange').textContent=`${MSHORT[wz.start[0]-1]} ${wz.start[1]} – ${MSHORT[wz.end[0]-1]} ${wz.end[1]}`;
+  document.getElementById('zodiacTrait').innerHTML=`<strong>Traits:</strong> ${wz.trait}`;
+
+  /* Chinese Zodiac */
+  const cz=getCZ(dob.getFullYear());
+  document.getElementById('chineseZodiac').innerHTML=`<div class="chinese-badge"><span style="font-size:1.5rem">${cz.emoji}</span>Year of the ${cz.name}</div>`;
+  document.getElementById('chineseElement').textContent=`Element: ${cz.element}`;
+  document.getElementById('chineseTrait').innerHTML=`<strong>Traits:</strong> ${cz.trait}`;
+
+  /* Planet ages */
+  const eYrs=td/365.25;
+  setTimeout(()=>{
+    document.getElementById('planetAges').innerHTML=PLANETS.map((p,i)=>{
+      const age=(eYrs/p.years).toFixed(2);
+      const bpct=Math.min(100,(parseFloat(age)/150)*100);
+      return `<div class="planet-item" id="pi${i}">
+        <span style="font-size:1.15rem;flex-shrink:0">${p.emoji}</span>
+        <span style="font-size:.9rem;font-weight:600;min-width:74px;color:var(--text)">${p.name}</span>
+        <div class="pbar-track"><div class="pbar-fill" id="pb${i}" style="width:0%"></div></div>
+        <span style="font-family:'Playfair Display',serif;font-weight:700;color:var(--gold);font-size:.95rem;min-width:52px;text-align:right">${age}</span>
+        <span style="font-size:.72rem;color:var(--muted);flex-shrink:0">yrs</span>
+      </div>`;
+    }).join('');
+    PLANETS.forEach((_,i)=>{
+      const bpct=Math.min(100,(parseFloat((eYrs/PLANETS[i].years).toFixed(2))/150)*100);
+      setTimeout(()=>{
+        document.getElementById('pi'+i)?.classList.add('revealed');
+        setTimeout(()=>{ const b=document.getElementById('pb'+i); if(b) b.style.width=bpct+'%'; },100);
+      },i*100);
+    });
+  },600);
+
+  /* Milestones */
+  const ms=buildMilestones(dob,tar);
+  const show=ms.filter(m=>m.cls==='past').slice(-3)
+    .concat(ms.filter(m=>m.cls==='next'))
+    .concat(ms.filter(m=>m.cls==='future').slice(0,5));
+  setTimeout(()=>{
+    document.getElementById('milestones').innerHTML=show.map((m,i)=>{
+      const ds=m.date.toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'});
+      const dstr=m.cls==='past'?`${Math.abs(m.diff)} days ago`
+                :m.cls==='next'?`in ${m.diff} days 🔜`
+                :`in ${fN(m.diff)} days`;
+      return `<div class="milestone ${m.cls}" id="ms${i}">
+        <div class="m-dot"></div>
+        <div style="flex:1">
+          <div style="font-size:.88rem;font-weight:600;color:var(--text)">${m.emoji} ${m.label}</div>
+          <div style="font-size:.73rem;color:var(--muted)">${ds}</div>
+        </div>
+        <div style="font-size:.78rem;color:${m.cls==='next'?'var(--gold)':'var(--muted)'};
+                    font-weight:${m.cls==='next'?700:400};text-align:right;flex-shrink:0;min-width:90px">${dstr}</div>
+      </div>`;
+    }).join('');
+    show.forEach((_,i)=>{ setTimeout(()=>document.getElementById('ms'+i)?.classList.add('revealed'),i*80); });
+  },700);
+
+  /* Fun facts */
+  const leaps=leapCount(dob.getFullYear(),tar.getFullYear());
+  const wkdays=Math.floor(td*5/7), wknds=td-wkdays;
+  const beats=Math.round(td*24*60*70), brths=Math.round(td*24*60*15);
+  const sleep=Math.round(td*.33), moons=Math.floor(td/29.53);
+  const blinks=Math.round(td*24*60*15), steps=Math.round(td*8000);
+
+  const facts=[
+    {i:'🌍',t:`You've lived <strong>${fN(td)}</strong> days on Earth.`},
+    {i:'❤️',t:`Your heart has beaten ~<strong>${big(beats)}</strong> times.`},
+    {i:'💨',t:`You've taken ~<strong>${big(brths)}</strong> breaths.`},
+    {i:'👁️',t:`You've blinked ~<strong>${big(blinks)}</strong> times (15/min average).`},
+    {i:'🚶',t:`You've taken an estimated <strong>${big(steps)}</strong> steps (8,000/day avg).`},
+    {i:'🍽️',t:`You've had roughly <strong>${fN(td*3)}</strong> meals in your life.`},
+    {i:'🌙',t:`You've experienced <strong>${moons}</strong> full lunar cycles.`},
+    {i:'🗓️',t:`You've lived through <strong>${leaps}</strong> leap year${leaps!==1?'s':''}.`},
+    {i:'😴',t:`You've spent ~<strong>${fN(sleep)}</strong> days sleeping (⅓ of life).`},
+    {i:'📅',t:`<strong>${fN(wkdays)}</strong> weekdays &amp; <strong>${fN(wknds)}</strong> weekend days so far.`},
+  ];
+  setTimeout(()=>{
+    document.getElementById('funFacts').innerHTML=facts.map((f,i)=>
+      `<div class="fact-chip" id="fc${i}" style="transition-delay:${i*.05}s">
+        <span style="font-size:1.15rem;flex-shrink:0;margin-top:1px">${f.i}</span>
+        <span>${f.t}</span>
+      </div>`
+    ).join('');
+    facts.forEach((_,i)=>{
+      setTimeout(()=>{
+        const el=document.getElementById('fc'+i);
+        if(el){ el.style.opacity='1'; el.style.animation=`slideIn .4s ease forwards`; }
+      },i*70);
+    });
+  },800);
+
+  _shareData={yrs,mos,dys,td,dtb,wz,cz,lpn,gen,dobVal,isBday};
+}
+
+function hideResults(){
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('placeholder').style.display='';
+  if(liveInterval) clearInterval(liveInterval);
+}
+
+/* ═══════════════════════════════════════
+   COPY + SHARE
+═══════════════════════════════════════ */
+function copyAge(){
+  const y=document.getElementById('years').textContent;
+  const m=document.getElementById('months').textContent;
+  const d=document.getElementById('days').textContent;
+  navigator.clipboard.writeText(`${y} Years, ${m} Months, ${d} Days`).then(()=>{
+    const btn=document.getElementById('copyBtn');
+    btn.textContent='✓ Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='⎘ Copy'; btn.classList.remove('copied'); },2000);
+  });
+}
+function openModal(){
+  if(!_shareData) return;
+  const sd=_shareData;
+  const dob=new Date(sd.dobVal+'T00:00:00');
+  const txt=
+`🎂 My Age Summary Card
+═══════════════════════
+📅 Born       : ${fmtD(dob)}
+🎉 Age        : ${sd.yrs} yrs, ${sd.mos} months, ${sd.dys} days
+📆 Total Days : ${fN(sd.td)} days
+⏳ Next B-Day : in ${sd.dtb} days
+♑ Zodiac     : ${sd.wz.emoji} ${sd.wz.name}
+🐲 Chinese    : ${sd.cz.emoji} Year of the ${sd.cz.name}
+🔢 Life Path  : ${sd.lpn}
+👨‍👩‍👧 Generation : ${sd.gen?sd.gen.name:'—'}
+═══════════════════════
+📊 Age Calculator`;
+  document.getElementById('shareCardTxt').textContent=txt;
+  document.getElementById('shareModal').classList.add('open');
+}
+function closeModal(){ document.getElementById('shareModal').classList.remove('open'); }
+function copyShareCard(){
+  navigator.clipboard.writeText(document.getElementById('shareCardTxt').textContent).then(()=>{
+    const btn=document.getElementById('shareCardCopyBtn');
+    btn.textContent='✓ Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='⎘ Copy Text'; btn.classList.remove('copied'); },2000);
+  });
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+</script>
+</body>
+</html>
