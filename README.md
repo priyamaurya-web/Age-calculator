@@ -25,6 +25,9 @@ Built with pure HTML, CSS (Tailwind), and JavaScript — no backend required.
 
 [View Live](https://age-calculator-hewz.onrender.com/) <!-- Update after deployment -->
 
+<img width="1748" height="911" alt="image" src="https://github.com/user-attachments/assets/2644794c-607b-457c-9eb4-0fd32943e261" />
+
+
 ## 📁 Project Structure
 /
 ├── index.html          # Complete single-file website
